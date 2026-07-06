@@ -95,13 +95,13 @@ const checkAllCleared = () => {
   everyGrid.value = grid.value.every(item => item.mined)
   if (everyGrid.value) {
     frequency.value += 1 //换地图
+    mapnum.value += 1 // 等级 挖完矿区的次数
     if (frequency.value > 5) {
       messageApi.success('恭喜你通关喵~ 接下来从零开始吧')
       frequency.value = 1
       return
     }
     initBoard() //重置矿区
-    mapnum.value += 1 // 地图进度
     messageApi.success(`进入下一关喵~`)
   }
 }
@@ -362,8 +362,8 @@ const handleLocalUpload = (options: any) => {
         <div class="username">我</div>
       </div>
       <div class="data_box">
-        <div class="data_item">星星: 0</div>
-        <div class="data_item">等级: 0</div>
+        <div class="data_item">星星: {{ stars }}</div>
+        <div class="data_item">等级: {{ mapnum }}</div>
       </div>
       <div class="btn_box">
         <a-upload name="avatar" :show-upload-list="false" :customRequest="handleLocalUpload">
