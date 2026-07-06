@@ -48,3 +48,29 @@ export interface cdType {
     /** 是否禁用 */
     click: boolean
 }
+
+// pinia的数据类型
+export interface gameType {
+    /** 镐头冷却时间与类型 */
+    cd: cdType[]
+    /** 星星总数 */
+    stars: number
+    /** 总分数 */
+    score: number
+    /** 镐头高亮 */
+    pickaxe: number
+    /** 地图章节 */
+    frequency: number
+    /** 矿石记录 */
+    grid: Cell[]
+    /** 矿区解锁程度 */
+    mapnum: number
+    /** 头像 */
+    avatar: string
+    /** 重复矿区标识符 */
+    everyGrid: boolean
+    /** 作弊——无限蹦蹦炸弹 */
+    infiniteBombShow: boolean
+    /** 作弊——所有工具无限cd */
+    resetCdShow: boolean
+}

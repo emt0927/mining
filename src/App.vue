@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { h, onMounted, ref } from 'vue';
-import type { Cell, PickaxeItem } from './types/game';
+import type { Cell, gameType, PickaxeItem } from './types/game';
 import { useGame } from './stores/game';
 import { storeToRefs } from 'pinia';
 // 随机分发矿石
@@ -43,15 +43,12 @@ const initBoard = () => {
   if (grid.value.length !== 0 && grid.value.length === totalCells && !everyGrid.value) {
     return
   } else {
-    console.log('我重生了');
     grid.value = [] // 尺寸对不上（比如换了设备），清空残局，重新生成适合屏幕的地图
     cd.value = [{ time: 0, click: true },
     { time: 0, click: true },
     { time: 0, click: true },
     { time: 0, click: true }]
   }
-  console.log(cols.value, 'cols');
-  console.log(rows.value, 'rows');
   const tempBoard: Cell[] = []
   for (let i = 0; i < totalCells; i++) {
     const row = Math.floor(i / cols.value)
@@ -61,7 +58,7 @@ const initBoard = () => {
   grid.value = tempBoard
   // 开始分发矿石
   generatePrizes()
-  console.log(grid.value);
+
 }
 // 镐头样式
 const pickaxes: PickaxeItem[] = [
@@ -112,7 +109,6 @@ const handleClick = (item: Cell) => {
   if (!cd.value[pickaxe.value].click) return //镐头还在cd
   const row = item.row
   const col = item.col
-  console.log(row, col);
   switch (pickaxe.value) {
     // 普通镐
     case 0:
@@ -205,12 +201,11 @@ const digSingleCell = (targetRow: number, targetCol: number) => {
 }
 // 冷却结束的回调
 const onFinish = (index: number) => {
-  console.log('结束了');
   cd.value[index].click = true
   cd.value[index].time = 0
 }
 import { SmileOutlined } from '@ant-design/icons-vue';
-import { notification, Button } from 'ant-design-vue';
+import { notification, Button, type UploadProps } from 'ant-design-vue';
 import { message } from 'ant-design-vue';
 const [messageApi, contextHolder] = message.useMessage(); //全局提示
 
@@ -295,6 +290,104 @@ const handleLocalUpload = (options: any) => {
   }
   reader.readAsDataURL(fileEntity)
 }
+
+// 清空数据
+const confirm = () => {
+  localStorage.removeItem('mining')
+  // 刷新
+  location.reload()
+}
+
+// 导出数据
+const exportData = () => {
+  try {
+    const Rawdata = localStorage.getItem('mining')
+    if (!Rawdata) {
+      messageApi.error('没有可以导出的数据!')
+      return
+    }
+    // 格式化数据
+    const data = JSON.stringify(JSON.parse(Rawdata), null, 2)
+
+    // 将数据包装成JSON对象
+    const blob = new Blob([data], { type: 'application/json' })
+    // 创建的a链接去触发下载
+    const Link = document.createElement('a')
+    Link.href = URL.createObjectURL(blob)
+    // 当前时间
+    const date = new Date().toISOString().slice(0, 10)
+    Link.download = `挖矿小游戏导出的数据_${date}.json`
+    Link.click()
+    // 释放临时链接的内存
+    URL.revokeObjectURL(Link.href)
+    messageApi.success('数据导出成功!')
+  } catch (err) {
+    messageApi.error(`数据导出失败 原因:${err}`)
+  }
+
+
+}
+// 导入数据
+const beforeUpload: UploadProps['customRequest'] = (options) => {
+  const file = options.file as File
+  const isJson = file.name.endsWith('.json') || file.type === 'application/json'
+  if (!isJson) {
+    messageApi.error('只能上传.json格式的游戏存档文件!')
+    return
+  }
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const result = e.target?.result as string
+      const importedData = JSON.parse(result) as gameType
+      // 大项校对
+      if (importedData.stars === undefined ||
+        importedData.score === undefined ||
+        importedData.frequency === undefined ||
+        importedData.grid === undefined ||
+        importedData.cd === undefined ||
+        importedData.mapnum === undefined) {
+        messageApi.error('导入失败：文件内容缺少核心游戏数据！');
+        return;
+      }
+      //类型检查
+      if (typeof importedData.stars !== 'number' ||
+        typeof importedData.score !== 'number' ||
+        typeof importedData.frequency !== 'number' ||
+        typeof importedData.everyGrid !== 'boolean') {
+        messageApi.error('导入失败：游戏数值类型异常，可能已被篡改！');
+        return;
+      }
+      // 防数组破坏
+      if (!Array.isArray(importedData.cd) || importedData.cd.length < 4) {
+        messageApi.error('导入失败：工具冷却系统数据损坏！');
+        return;
+      }
+      if (!Array.isArray(importedData.grid)) {
+        messageApi.error('导入失败：矿区网格数据损坏！');
+        return;
+      }
+      //数值边界
+      if (importedData.stars < 0 || importedData.score < 0 || importedData.frequency < 0) {
+        messageApi.error('导入失败：游戏数值不能为负数！');
+        return;
+      }
+
+      // 覆盖数据
+      messageApi.success('读档成功，正在进入矿区...')
+      localStorage.setItem('mining', result)
+      setTimeout(() => {
+        if (typeof options.onSuccess === 'function') {
+          options.onSuccess({});
+        }
+        location.reload(); // 1秒后，等玩家看爽了提示，再刷新网页
+      }, 1000);
+    } catch (err) {
+      messageApi.error(`解析 JSON 失败，文件格式已损坏！`)
+    }
+  }
+  reader.readAsText(file)
+}
 </script>
 <!-- 
 1. -1 -1
@@ -369,9 +462,13 @@ const handleLocalUpload = (options: any) => {
         <a-upload name="avatar" :show-upload-list="false" :customRequest="handleLocalUpload">
           <a-button type="primary pointer_cursor">修改头像</a-button>
         </a-upload>
-        <a-button type="primary pointer_cursor" class="import_btn">导入</a-button>
-        <a-button type="primary pointer_cursor" class="export_btn">导出</a-button>
-        <a-button type="primary pointer_cursor" danger>清空</a-button>
+        <a-upload accept=".json" :customRequest="beforeUpload" :show-upload-list="false">
+          <a-button type="primary pointer_cursor" class="import_btn">导入</a-button>
+        </a-upload>
+        <a-button type="primary pointer_cursor" class="export_btn" @click="exportData">导出</a-button>
+        <a-popconfirm title="清空数据属于危险操作,请问是否要清空数据?" placement="bottom" ok-text="确定" cancel-text="取消" @confirm="confirm">
+          <a-button type="primary pointer_cursor" danger>清空</a-button>
+        </a-popconfirm>
       </div>
     </div>
   </a-modal>
