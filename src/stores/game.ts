@@ -26,13 +26,16 @@ export const useGame = defineStore('mining', () => {
     const avatar = ref(new URL('../assets/images/avatar.png', import.meta.url).href)
     // 作弊功能 resetCdShow 所有工具无限cd  infiniteBombShow 蹦蹦炸弹无限cd
     const resetCdShow = ref(false)
-    
+
     const infiniteBombShow = ref(false)
 
     // 重置矿区标识符
     const everyGrid = ref(false)
 
-    return { cd, stars, score, pickaxe, frequency, grid, mapnum, avatar,resetCdShow, infiniteBombShow, everyGrid }
+    // 作弊标识符
+    const go = ref(false)
+
+    return { cd, stars, score, pickaxe, frequency, grid, mapnum, avatar, resetCdShow, infiniteBombShow, everyGrid, go }
 }, {
     persist: true //持久化
 })

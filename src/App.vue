@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { h, onMounted, ref } from 'vue';
+import { h, onMounted, onUnmounted, ref } from 'vue';
 import type { Cell, gameType, PickaxeItem } from './types/game';
 import { useGame } from './stores/game';
 import { storeToRefs } from 'pinia';
@@ -23,7 +23,7 @@ const generatePrizes = () => {
 
 }
 const Mining = useGame() // 仓库
-const { grid, score, stars, frequency, pickaxe, mapnum, cd, infiniteBombShow, resetCdShow, everyGrid, avatar } = storeToRefs(Mining)
+const { grid, score, stars, frequency, pickaxe, mapnum, cd, infiniteBombShow, resetCdShow, everyGrid, avatar, go } = storeToRefs(Mining)
 // 列
 const cols = ref(15)
 // 行
@@ -44,6 +44,8 @@ const initBoard = () => {
     return
   } else {
     grid.value = [] // 尺寸对不上（比如换了设备），清空残局，重新生成适合屏幕的地图
+    go.value = false
+    everyGrid.value = false
     cd.value = [{ time: 0, click: true },
     { time: 0, click: true },
     { time: 0, click: true },
@@ -89,7 +91,11 @@ const clickPickaxe = (index: number) => {
 }
 // 换地图
 const checkAllCleared = () => {
-  everyGrid.value = grid.value.every(item => item.mined)
+  if (go.value) {
+    everyGrid.value = true
+  } else {
+    everyGrid.value = grid.value.every(item => item.mined)
+  }
   if (everyGrid.value) {
     frequency.value += 1 //换地图
     mapnum.value += 1 // 等级 挖完矿区的次数
@@ -107,6 +113,11 @@ const checkAllCleared = () => {
 const handleClick = (item: Cell) => {
   if (item.mined) return //矿已被挖开
   if (!cd.value[pickaxe.value].click) return //镐头还在cd
+  // 开启秘籍后 点击直接进入下一关
+  if (go.value) {
+    checkAllCleared()
+    return
+  }
   const row = item.row
   const col = item.col
   switch (pickaxe.value) {
@@ -388,6 +399,54 @@ const beforeUpload: UploadProps['customRequest'] = (options) => {
   }
   reader.readAsText(file)
 }
+
+// 作弊彩蛋
+const keyOpen = ref(false)
+console.log(...[
+  '%c You have successfully unlocked the manual! To the path of philosophy, I command you to open! \n                Up, Up, Down, Down, Left, Right, Left, Right, B, A, B, A                      \n                         https://github.com/Lkl567899/mining                                 ',
+  'background: #E72264; padding: 12px; color: #FFFFFF; font-weight: bold; border: 3px double #ffd700; line-height: 2.0; font-family: sans-serif;'
+]);
+
+const KONAMI_CODE = [
+  'ArrowUp', 'ArrowUp',
+  'ArrowDown', 'ArrowDown',
+  'ArrowLeft', 'ArrowRight',
+  'ArrowLeft', 'ArrowRight',
+  'b', 'a', 'b', 'a'
+]
+let playerInputHistory: string[] = []
+
+const handleKeyDown = (e: KeyboardEvent) => {
+  playerInputHistory.push(e.key)
+  if (playerInputHistory.length > KONAMI_CODE.length) {
+    playerInputHistory.shift()
+  }
+  const isMatch = playerInputHistory.join(',').toLowerCase() === KONAMI_CODE.join(',').toLowerCase()
+  if (isMatch) {
+    keyOpen.value = true
+    playerInputHistory = []
+  }
+}
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown)
+})
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown)
+})
+const handleOk = () => {
+  keyOpen.value = false
+  // 所有星星高亮
+  go.value = true
+  // 重置工具cd
+  cd.value.forEach(item => item.time = 0)
+  grid.value.forEach(item => {
+    if (item.type === 'success') {
+      stars.value++
+      score.value += item.score
+      item.mined = true
+    }
+  })
+}
 </script>
 <!-- 
 1. -1 -1
@@ -470,6 +529,19 @@ const beforeUpload: UploadProps['customRequest'] = (options) => {
           <a-button type="primary pointer_cursor" danger>清空</a-button>
         </a-popconfirm>
       </div>
+    </div>
+  </a-modal>
+
+  <a-modal v-model:open="keyOpen" title="你成功打开了秘籍!" @ok="handleOk" ok-text="确认" cancel-text="取消">
+
+    <div class="modal_style">
+      <div class="_left">
+        <p>雄伟的水之精灵 登上天空的雷帝之王子啊</p>
+        <p>实现我的愿望 带来凶暴的恩惠 让矮小的存在见识您的力量</p>
+        <p>以神之铁锤敲击铁砧 显示您的可畏 让洪水淹没整片大地</p>
+        <p>啊 雨啊 冲垮一切 驱逐所有事物吧!</p>
+      </div>
+      <img src="./assets/lqx.png" class="lqx" alt="">
     </div>
   </a-modal>
 </template>
@@ -798,6 +870,17 @@ body {
 
   .export_btn:hover {
     background-color: #f3bf04 !important;
+  }
+}
+
+.modal_style {
+  display: flex;
+  justify-content: space-between;
+
+
+  .lqx {
+    width: 110px;
+    height: 110px;
   }
 }
 </style>
