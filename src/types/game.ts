@@ -73,4 +73,6 @@ export interface gameType {
     infiniteBombShow: boolean
     /** 作弊——所有工具无限cd */
     resetCdShow: boolean
+    /** 作弊彩蛋标识*/
+    go: boolean
 }
