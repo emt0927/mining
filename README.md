@@ -25,7 +25,9 @@ Vue 3, Vite, TypeScript, Pinia, Ant Design Vue
 
 ## 在线体验
 
+https://gold-miners.netlify.app/
 ## 版本更新
+
 ✔️作弊功能<br>
 ✔️彩蛋功能<br>
 ✔️头像自定义<br>
